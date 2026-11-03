@@ -1,3 +1,5 @@
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+
 plugins {
     id("org.jetbrains.kotlin.jvm")
     id("org.jetbrains.intellij.platform")
@@ -8,6 +10,8 @@ kotlin {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+
     intellijPlatform {
         val localPath = providers.gradleProperty("platformLocalPath").orNull
         if (localPath != null && file(localPath).exists()) {
@@ -16,6 +20,7 @@ dependencies {
             datagrip(providers.gradleProperty("platformVersion"))
         }
         bundledPlugin("com.intellij.database")
+        testFramework(TestFrameworkType.Platform)
     }
 }
 
