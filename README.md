@@ -13,8 +13,9 @@ Kill / Disconnect session actions. Inspired by the Sessions window of PL/SQL Dev
   - *Table* mode shows the result in a grid.
   - *Text* mode shows SQL-highlighted text; rows are separated by new lines.
   - Details are refreshed when the selection changes and when the tab grid is reloaded.
-- **HTML columns.** In *Table* details, cells of the columns listed in *HTML columns* get two icons on the right:
-  open the value in a DataGrip editor tab (embedded browser) or in the system browser. Handy for
+- **HTML columns.** In *Table* details, cells of the columns listed in *HTML columns* show three icons instead of the text:
+  open the value in a DataGrip editor tab (embedded browser), open it in the system browser, or copy it to the
+  clipboard. Handy for
   `dbms_sqltune.report_sql_monitor` reports. If DataGrip loaded the value partially (LOB size limit), the detail
   query is re-executed and the row is found by the values of *Row key columns*; without them the value is not re-read.
 - **Kill / Disconnect.** `ALTER SYSTEM KILL SESSION '…' IMMEDIATE` and

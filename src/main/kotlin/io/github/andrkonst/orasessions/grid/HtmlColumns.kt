@@ -29,8 +29,8 @@ import javax.swing.JPanel
 import javax.swing.JTable
 
 /**
- * Draws "open HTML" icons at the right edge of non-null cells of the given columns and opens the cell value
- * on click. The icons are painted by a cell renderer, clicks are hit-tested against the same geometry.
+ * Replaces the text of non-null cells of the given columns with "open in DataGrip", "open in browser" and "copy"
+ * icons and handles the clicked one. The icons are painted by a cell renderer, clicks are hit-tested against the same geometry.
  */
 object HtmlColumns {
     fun interface OpenHandler {
@@ -87,9 +87,7 @@ object HtmlColumns {
         private val text: GridCellRendererFactory,
         targets: List<HtmlTarget>,
     ) : GridCellRenderer(grid) {
-        private val strip = IconStrip(targets)
-        private val panel = JPanel(BorderLayout()).apply { add(strip, BorderLayout.EAST) }
-        private var content: JComponent? = null
+        private val panel = JPanel(BorderLayout()).apply { add(IconStrip(targets), BorderLayout.WEST) }
 
         override fun getSuitability(row: ModelIndex<GridRow>, column: ModelIndex<GridColumn>) =
             if (isHtmlColumn(myGrid, columns, column)) SUITABILITY_MAX else SUITABILITY_UNSUITABLE
@@ -97,11 +95,7 @@ object HtmlColumns {
         override fun getComponent(row: ViewIndex<GridRow>, column: ViewIndex<GridColumn>, value: Any?): JComponent {
             val delegate = text.getOrCreateRenderer(row.toModel(myGrid), column.toModel(myGrid)).getComponent(row, column, value)
             if (!hasValue(value)) return delegate
-            if (content !== delegate || delegate.parent !== panel) {
-                content?.let { if (it.parent === panel) panel.remove(it) }
-                panel.add(delegate, BorderLayout.CENTER)
-                content = delegate
-            }
+            // The text renderer is still asked for the component to keep its selection and stripe background
             panel.background = delegate.background
             panel.isOpaque = true
             return panel
@@ -132,7 +126,7 @@ object HtmlColumns {
 
             /** Target whose icon is under [point] in a cell painted at [cell]. */
             fun hit(targets: List<HtmlTarget>, cell: Rectangle, point: Point): HtmlTarget? {
-                val x = point.x - (cell.x + cell.width - width(targets)) - JBUI.scale(PAD)
+                val x = point.x - cell.x - JBUI.scale(PAD)
                 if (x < 0) return null
                 val index = x / step(targets)
                 if (index >= targets.size || x % step(targets) >= iconWidth(targets)) return null
