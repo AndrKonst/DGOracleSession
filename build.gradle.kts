@@ -1,4 +1,6 @@
+import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 
 plugins {
     id("org.jetbrains.kotlin.jvm")
@@ -7,6 +9,11 @@ plugins {
 
 kotlin {
     jvmToolchain(21)
+    compilerOptions {
+        // No DefaultImpls bridges for platform interfaces: otherwise Plugin Verifier reports
+        // deprecated/experimental ToolWindowFactory defaults as overridden by the plugin
+        jvmDefault.set(JvmDefaultMode.NO_COMPATIBILITY)
+    }
 }
 
 dependencies {
@@ -21,6 +28,7 @@ dependencies {
         }
         bundledPlugin("com.intellij.database")
         testFramework(TestFrameworkType.Platform)
+        pluginVerifier()
     }
 }
 
@@ -33,4 +41,15 @@ intellijPlatform {
         }
     }
     buildSearchableOptions = false
+
+    pluginVerification {
+        ides {
+            val localPath = providers.gradleProperty("platformLocalPath").orNull
+            if (localPath != null && file(localPath).exists()) {
+                local(localPath)
+            } else {
+                create(IntelliJPlatformType.DataGrip, providers.gradleProperty("platformVersion"))
+            }
+        }
+    }
 }

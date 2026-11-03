@@ -37,13 +37,13 @@ class QueryTabsSettingsSerializationTest {
     @Test
     fun `default state is not written`() {
         val element = XmlSerializer.serialize(QueryTabsSettings.SettingsState(), com.intellij.util.xmlb.SkipDefaultsSerializationFilter())
-        assertTrue(element == null || JDOMUtil.isEmpty(element))
+        assertTrue(JDOMUtil.isEmpty(element))
     }
 
     @Test
     fun `empty tab list survives round trip`() {
         val state = QueryTabsSettings.SettingsState().apply { tabs = mutableListOf() }
-        val element = XmlSerializer.serialize(state, com.intellij.util.xmlb.SkipDefaultsSerializationFilter())!!
+        val element = XmlSerializer.serialize(state, com.intellij.util.xmlb.SkipDefaultsSerializationFilter())
         val restored = XmlSerializer.deserialize(element, QueryTabsSettings.SettingsState::class.java)
         assertEquals(emptyList<TabDef>(), restored.tabs)
     }
