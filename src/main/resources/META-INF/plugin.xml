@@ -18,6 +18,10 @@
                     icon="/icons/oraSessions.svg"
                     factoryClass="io.github.andrkonst.orasessions.toolwindow.SessionsToolWindowFactory"/>
         <notificationGroup id="Oracle Sessions" displayType="BALLOON"/>
+        <applicationConfigurable parentId="tools"
+                                 id="io.github.andrkonst.orasessions.settings"
+                                 instance="io.github.andrkonst.orasessions.settings.QueryTabsConfigurable"
+                                 key="settings.display.name"/>
     </extensions>
 
     <actions>
@@ -28,6 +32,14 @@
             <action id="OraSessions.DisconnectSessionImmediate"
                     class="io.github.andrkonst.orasessions.actions.DisconnectSessionImmediateAction"
                     icon="AllIcons.Actions.Exit"/>
+        </group>
+        <action id="OraSessions.OpenSettings"
+                class="io.github.andrkonst.orasessions.actions.OpenSettingsAction"
+                icon="AllIcons.General.Settings"/>
+        <group id="OraSessions.ToolbarActions">
+            <reference ref="OraSessions.SessionActions"/>
+            <separator/>
+            <reference ref="OraSessions.OpenSettings"/>
         </group>
     </actions>
 </idea-plugin>

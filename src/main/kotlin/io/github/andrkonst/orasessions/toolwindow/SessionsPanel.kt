@@ -49,7 +49,7 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
             if (!updatingCombo) onDataSourceSelected(dataSourceCombo.selectedItem as LocalDataSource?)
         }
 
-        val actionGroup = ActionManager.getInstance().getAction(QueryTabPanel.SESSION_ACTIONS_GROUP) as ActionGroup
+        val actionGroup = ActionManager.getInstance().getAction(TOOLBAR_ACTIONS_GROUP) as ActionGroup
         val actionToolbar = ActionManager.getInstance().createActionToolbar(TOOLBAR_PLACE, actionGroup, true)
         actionToolbar.targetComponent = this
         toolbar = JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(4), JBUI.scale(2))).apply {
@@ -144,5 +144,6 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
 
     private companion object {
         const val TOOLBAR_PLACE = "OraSessions.Toolbar"
+        const val TOOLBAR_ACTIONS_GROUP = "OraSessions.ToolbarActions"
     }
 }
