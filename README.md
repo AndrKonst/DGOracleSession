@@ -1,6 +1,6 @@
-# Oracle Sessions for DataGrip
+# DGOracleSession
 
-A DataGrip plugin that adds an **Oracle Sessions** tool window: configurable tabs with your own SQL queries
+A DataGrip plugin that adds a **DGOracleSession** tool window: configurable tabs with your own SQL queries
 (sessions, locks, long operations — anything you like), detail sub-tabs for the selected row and
 Kill / Disconnect session actions. Inspired by the Sessions window of PL/SQL Developer.
 
@@ -21,7 +21,7 @@ Kill / Disconnect session actions. Inspired by the Sessions window of PL/SQL Dev
 - **Kill / Disconnect.** `ALTER SYSTEM KILL SESSION '…' IMMEDIATE` and
   `ALTER SYSTEM DISCONNECT SESSION '…' IMMEDIATE` for one or several selected rows, with confirmation.
   Available in tabs whose result has `SID` and `SERIAL#` columns.
-- **Settings** in *Settings → Tools → Oracle Sessions*: add, remove and reorder tabs and details,
+- **Settings** in *Settings → Tools → DGOracleSession*: add, remove and reorder tabs and details,
   edit their SQL with Oracle highlighting. Settings are global for the IDE.
 - The selected row is kept across reloads by `SID` + `SERIAL#`.
 
@@ -36,7 +36,7 @@ Kill / Disconnect session actions. Inspired by the Sessions window of PL/SQL Dev
 
 1. Build the plugin (see [Building from source](#building-from-source)).
 2. In DataGrip: *Settings → Plugins → ⚙ → Install Plugin from Disk…* and choose the zip.
-3. Open the **Oracle Sessions** tool window and select an Oracle data source.
+3. Open the **DGOracleSession** tool window and select an Oracle data source.
 
 ## Configuration example
 
@@ -76,7 +76,7 @@ redirects http to https, and the viewer would otherwise fail with *Error while r
 JDK 21 is required.
 
 ```bash
-./gradlew buildPlugin      # build/distributions/oracle-sessions-<version>.zip
+./gradlew buildPlugin      # build/distributions/DGOracleSession-<version>.zip
 ./gradlew test             # unit tests
 ./gradlew runIde           # sandbox DataGrip with the plugin
 ./gradlew verifyPlugin     # JetBrains Plugin Verifier
@@ -89,7 +89,7 @@ The build uses the local DataGrip installation from `platformLocalPath` in `grad
 
 - The plugin relies on the DataGrip Database and Grid APIs, which are public but not documented and may change
   between major versions. Re-run `./gradlew verifyPlugin` after a DataGrip upgrade.
-- Grids run in a dedicated DataGrip session named *Oracle Sessions* (visible in the Services tool window);
+- Grids run in a dedicated DataGrip session named *DGOracleSession* (visible in the Services tool window);
   text details and Kill / Disconnect use one more service connection. So the plugin has two sessions in `v$session`.
 
 ## License
