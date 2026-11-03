@@ -26,12 +26,10 @@ import java.awt.BorderLayout
 import javax.swing.JPanel
 
 /**
- * Detail shown as read-only SQL-highlighted text. With the `/* concatenate */` hint all values are
- * glued together without separators (like PL/SQL Developer), otherwise rows are separated by new lines.
+ * Detail shown as read-only SQL-highlighted text: rows are separated by new lines, columns by tabs.
  */
 class DetailTextPanel(project: Project, detail: DetailDef) : DetailPanel(project, detail) {
     private val service = SessionsService.getInstance(project)
-    private val concatenate = hasConcatenateHint(detail.sql)
     private val statusLabel = JBLabel().apply { border = JBUI.Borders.empty(2, 6) }
     private val editor = EditorTextField("", project, PlainTextFileType.INSTANCE).apply {
         isViewer = true
@@ -74,8 +72,8 @@ class DetailTextPanel(project: Project, detail: DetailDef) : DetailPanel(project
     }
 
     private fun toText(result: QueryResult): String =
-        result.rows.joinToString(if (concatenate) "" else "\n") { row ->
-            row.joinToString(if (concatenate) "" else "\t") { it?.toString().orEmpty() }
+        result.rows.joinToString("\n") { row ->
+            row.joinToString("\t") { it?.toString().orEmpty() }
         }
 
     private fun showText(ds: LocalDataSource, text: String) {
