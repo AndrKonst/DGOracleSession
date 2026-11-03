@@ -21,6 +21,10 @@ class QueryTabsSettingsSerializationTest {
                     details = mutableListOf(
                         DetailDef("SQL Text", DetailMode.TEXT, "select sql_fulltext from v\$sql where sql_id = :sql_id"),
                         DetailDef("Locks", DetailMode.TABLE, "select * from v\$lock where sid = :sid"),
+                        DetailDef(
+                            "SQL Monitor", DetailMode.TABLE, "select sql_id, report from t",
+                            htmlColumns = "report", keyColumns = "sql_id, sql_exec_id",
+                        ),
                     ),
                 ),
                 TabDef(caption = "Empty", sql = ""),

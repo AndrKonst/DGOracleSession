@@ -40,6 +40,9 @@ object GridRows {
         return null
     }
 
+    fun rowValues(grid: DataGrid, row: ModelIndex<GridRow>): Map<String, Any?> =
+        rowValues(grid.getDataModel(DataAccessType.DATABASE_DATA), row)
+
     private fun rowValues(model: GridModel<GridRow, GridColumn>, row: ModelIndex<GridRow>): Map<String, Any?> {
         val values = LinkedHashMap<String, Any?>()
         model.columns.forEachIndexed { i, column ->
