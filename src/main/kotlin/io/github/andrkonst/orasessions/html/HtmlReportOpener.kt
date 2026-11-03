@@ -29,6 +29,8 @@ enum class HtmlTarget(val icon: Icon) {
 object HtmlReportOpener {
     private const val TEMP_DIR = "ora-sessions"
     private const val BOM = '\uFEFF'
+    private const val ORACLE_HTTP = "http://download.oracle.com/"
+    private const val ORACLE_HTTPS = "https://download.oracle.com/"
 
     fun targets(): List<HtmlTarget> =
         if (JBCefApp.isSupported()) HtmlTarget.entries else HtmlTarget.entries - HtmlTarget.IDE
@@ -43,7 +45,9 @@ object HtmlReportOpener {
             }
             return
         }
-        val file = withContext(Dispatchers.IO) { write(title, html) }
+        // ACTIVE reports reference http://download.oracle.com, which redirects to https, and the viewer then drops
+        // the report data posted to its iframe because the target origin no longer matches
+        val file = withContext(Dispatchers.IO) { write(title, html.replace(ORACLE_HTTP, ORACLE_HTTPS)) }
         withContext(Dispatchers.EDT) {
             when (target) {
                 HtmlTarget.IDE -> {
