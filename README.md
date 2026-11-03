@@ -68,7 +68,8 @@ select sql_id, sql_exec_id, sql_exec_start, round(elapsed_time / 1e6, 2) elapsed
  order by sql_exec_start desc
 ```
 
-An `ACTIVE` report loads its scripts from `download.oracle.com`, so it needs internet access.
+An `ACTIVE` report loads its scripts from `download.oracle.com`, so it needs internet access. When opening a report, `http://download.oracle.com` is replaced with `https://`: the server
+redirects http to https, and the viewer would otherwise fail with *Error while retrieving data*.
 
 ## Building from source
 
