@@ -20,6 +20,13 @@ object GridRows {
         return rowValues(model, row)
     }
 
+    fun selectedRowsValues(grid: DataGrid): List<Map<String, Any?>> {
+        val model = grid.getDataModel(DataAccessType.DATABASE_DATA)
+        return grid.selectionModel.selectedRows.asList()
+            .filter { it.isValid(model) }
+            .map { rowValues(model, it) }
+    }
+
     /** Row identity for keeping the selection across reloads: SID + SERIAL# when both columns exist. */
     fun key(values: Map<String, Any?>): List<String>? =
         if (KEY_COLUMNS.all { it in values }) KEY_COLUMNS.map { values[it]?.toString().orEmpty() } else null

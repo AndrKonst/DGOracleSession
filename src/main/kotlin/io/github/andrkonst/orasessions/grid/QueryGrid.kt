@@ -11,6 +11,7 @@ import com.intellij.database.datagrid.GridRequestSource
 import com.intellij.database.datagrid.GridUtil
 import com.intellij.database.run.ui.DataGridRequestPlace
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import javax.swing.JComponent
@@ -24,6 +25,7 @@ class QueryGrid(
     dataSource: LocalDataSource,
     val sql: String,
     parentDisposable: Disposable,
+    popupActions: ActionGroup = GridUtil.getGridPopupActions(),
 ) : Disposable {
     private val hookUp: DatabaseGridDataHookUp
     val grid: DataGrid
@@ -33,7 +35,7 @@ class QueryGrid(
         Disposer.register(parentDisposable, this)
         val session = DatabaseSessionManager.getSession(project, dataSource, SESSION_TITLE)
         hookUp = DbGridDataHookUpUtil.createReadOnlyDatabaseHookUp(project, session, this, sql, DGDepartment.UNKNOWN)
-        grid = DataGridUtil.createDataGrid(project, hookUp, GridUtil.getGridPopupActions())
+        grid = DataGridUtil.createDataGrid(project, hookUp, popupActions)
         Disposer.register(this, grid)
         GridUtil.addGridHeaderComponent(grid)
         component = grid.panel.component

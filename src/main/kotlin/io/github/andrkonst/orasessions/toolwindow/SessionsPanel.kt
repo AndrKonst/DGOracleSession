@@ -4,6 +4,9 @@ import com.intellij.database.dataSource.LocalDataSource
 import com.intellij.database.model.RawDataSource
 import com.intellij.database.psi.DataSourceManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionGroup
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.DataSink
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
@@ -46,9 +49,13 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
             if (!updatingCombo) onDataSourceSelected(dataSourceCombo.selectedItem as LocalDataSource?)
         }
 
+        val actionGroup = ActionManager.getInstance().getAction(QueryTabPanel.SESSION_ACTIONS_GROUP) as ActionGroup
+        val actionToolbar = ActionManager.getInstance().createActionToolbar(TOOLBAR_PLACE, actionGroup, true)
+        actionToolbar.targetComponent = this
         toolbar = JPanel(FlowLayout(FlowLayout.LEFT, JBUI.scale(4), JBUI.scale(2))).apply {
             add(JBLabel(OraSessionsBundle.message("datasource.label")))
             add(dataSourceCombo)
+            add(actionToolbar.component)
         }
         tabbedPane.addChangeListener { activateSelectedTab() }
         setContent(contentPanel)
@@ -128,5 +135,14 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
         activateSelectedTab()
     }
 
+    override fun uiDataSnapshot(sink: DataSink) {
+        super.uiDataSnapshot(sink)
+        sink[QueryTabPanel.KEY] = tabPanels.getOrNull(tabbedPane.selectedIndex)
+    }
+
     override fun dispose() = Unit
+
+    private companion object {
+        const val TOOLBAR_PLACE = "OraSessions.Toolbar"
+    }
 }
