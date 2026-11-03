@@ -18,6 +18,7 @@
                     icon="/icons/oraSessions.svg"
                     factoryClass="io.github.andrkonst.orasessions.toolwindow.SessionsToolWindowFactory"/>
         <notificationGroup id="Oracle Sessions" displayType="BALLOON"/>
+        <fileEditorProvider implementation="io.github.andrkonst.orasessions.html.HtmlReportEditorProvider"/>
         <applicationConfigurable parentId="tools"
                                  id="io.github.andrkonst.orasessions.settings"
                                  instance="io.github.andrkonst.orasessions.settings.QueryTabsConfigurable"

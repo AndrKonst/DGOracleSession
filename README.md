@@ -13,6 +13,10 @@ Kill / Disconnect session actions. Inspired by the Sessions window of PL/SQL Dev
   - *Table* mode shows the result in a grid.
   - *Text* mode shows SQL-highlighted text; rows are separated by new lines.
   - Details are refreshed when the selection changes and when the tab grid is reloaded.
+- **HTML columns.** In *Table* details, cells of the columns listed in *HTML columns* get two icons on the right:
+  open the value in a DataGrip editor tab (embedded browser) or in the system browser. Handy for
+  `dbms_sqltune.report_sql_monitor` reports. If DataGrip loaded the value partially (LOB size limit), the detail
+  query is re-executed and the row is found by the values of *Row key columns*; without them the value is not re-read.
 - **Kill / Disconnect.** `ALTER SYSTEM KILL SESSION '…' IMMEDIATE` and
   `ALTER SYSTEM DISCONNECT SESSION '…' IMMEDIATE` for one or several selected rows, with confirmation.
   Available in tabs whose result has `SID` and `SERIAL#` columns.
@@ -51,6 +55,19 @@ Detail examples for it:
 | SQL Text | Text  | `select sql_fulltext from v$sql where sql_id = :sql_id and rownum = 1` |
 | Locks    | Table | `select * from v$lock where sid = :sid` |
 | Wait     | Table | `select sid, event, wait_class, state, seconds_in_wait from v$session_wait where sid = :sid` |
+
+SQL Monitor report with *HTML columns* `report` and *Row key columns* `sql_id, sql_exec_id`:
+
+```sql
+select sql_id, sql_exec_id, sql_exec_start, round(elapsed_time / 1e6, 2) elapsed_sec,
+       dbms_sqltune.report_sql_monitor(sql_id => sql_id, sql_exec_id => sql_exec_id,
+                                       sql_exec_start => sql_exec_start, type => 'ACTIVE') report
+  from v$sql_monitor
+ where sid = :sid and session_serial# = :serial#
+ order by sql_exec_start desc
+```
+
+An `ACTIVE` report loads its scripts from `download.oracle.com`, so it needs internet access.
 
 ## Building from source
 

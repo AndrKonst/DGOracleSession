@@ -37,6 +37,8 @@ class QueryTabsConfigurable : SearchableConfigurable {
     private val detailCaption = JBTextField()
     private val detailMode = ComboBox(DetailMode.entries.toTypedArray())
     private val detailSql = SqlEditorField()
+    private val detailHtmlColumns = JBTextField().apply { emptyText.text = OraSessionsBundle.message("settings.html.columns.empty") }
+    private val detailKeyColumns = JBTextField().apply { emptyText.text = OraSessionsBundle.message("settings.key.columns.empty") }
 
     private var tabForm: JComponent? = null
     private var detailForm: JComponent? = null
@@ -86,6 +88,8 @@ class QueryTabsConfigurable : SearchableConfigurable {
         val detailFormPanel = FormBuilder.createFormBuilder()
             .addLabeledComponent(OraSessionsBundle.message("settings.caption"), detailCaption)
             .addLabeledComponent(OraSessionsBundle.message("settings.mode"), detailMode)
+            .addLabeledComponent(OraSessionsBundle.message("settings.html.columns"), detailHtmlColumns)
+            .addLabeledComponent(OraSessionsBundle.message("settings.key.columns"), detailKeyColumns)
             .addLabeledComponentFillVertically(OraSessionsBundle.message("settings.sql"), detailSql)
             .panel
         detailForm = detailFormPanel
@@ -160,8 +164,19 @@ class QueryTabsConfigurable : SearchableConfigurable {
             if (loading) return@addActionListener
             selectedDetail()?.mode = detailMode.selectedItem as DetailMode
             detailsList.repaint()
+            updateHtmlFields()
         }
         detailSql.onTextChanged { if (!loading) selectedDetail()?.sql = it }
+        detailHtmlColumns.document.addDocumentListener(object : com.intellij.ui.DocumentAdapter() {
+            override fun textChanged(e: DocumentEvent) {
+                if (!loading) selectedDetail()?.htmlColumns = detailHtmlColumns.text
+            }
+        })
+        detailKeyColumns.document.addDocumentListener(object : com.intellij.ui.DocumentAdapter() {
+            override fun textChanged(e: DocumentEvent) {
+                if (!loading) selectedDetail()?.keyColumns = detailKeyColumns.text
+            }
+        })
     }
 
     private fun selectedTab(): TabDef? = tabsList.selectedValue
@@ -186,8 +201,17 @@ class QueryTabsConfigurable : SearchableConfigurable {
             detailCaption.text = detail?.caption.orEmpty()
             detailMode.selectedItem = detail?.mode ?: DetailMode.TABLE
             detailSql.text = detail?.sql.orEmpty()
+            detailHtmlColumns.text = detail?.htmlColumns.orEmpty()
+            detailKeyColumns.text = detail?.keyColumns.orEmpty()
         }
         setEnabled(detailForm, detail != null)
+    }
+
+    /** HTML columns are rendered only in grids, so the fields are disabled in Text mode. */
+    private fun updateHtmlFields() {
+        val enabled = selectedDetail()?.mode == DetailMode.TABLE
+        detailHtmlColumns.isEnabled = enabled
+        detailKeyColumns.isEnabled = enabled
     }
 
     private fun moveDetail(delta: Int) {
@@ -203,6 +227,7 @@ class QueryTabsConfigurable : SearchableConfigurable {
     private fun setEnabled(component: JComponent?, enabled: Boolean) {
         if (component != null) UIUtil.setEnabled(component, enabled, true)
         if (component === tabForm && enabled) setEnabled(detailForm, selectedDetail() != null)
+        if (component === detailForm && enabled) updateHtmlFields()
     }
 
     private inline fun withLoading(block: () -> Unit) {

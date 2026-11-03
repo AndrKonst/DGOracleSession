@@ -26,6 +26,7 @@ class QueryGrid(
     val sql: String,
     parentDisposable: Disposable,
     popupActions: ActionGroup = GridUtil.getGridPopupActions(),
+    configure: (DataGrid) -> Unit = {},
 ) : Disposable {
     private val hookUp: DatabaseGridDataHookUp
     val grid: DataGrid
@@ -39,6 +40,7 @@ class QueryGrid(
         Disposer.register(this, grid)
         GridUtil.addGridHeaderComponent(grid)
         component = grid.panel.component
+        configure(grid)
         hookUp.loader.loadFirstPage(GridRequestSource(DataGridRequestPlace(grid)))
     }
 
