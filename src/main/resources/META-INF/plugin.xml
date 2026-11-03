@@ -1,6 +1,6 @@
 <idea-plugin>
-    <id>io.github.andrkonst.orasessions</id>
-    <name>Oracle Sessions</name>
+    <id>io.github.andrkonst.dgoraclesession</id>
+    <name>DGOracleSession</name>
     <vendor url="https://github.com/AndrKonst">Andronov Konstantin</vendor>
     <description><![CDATA[
         <p>Oracle sessions monitor for DataGrip: a tool window with configurable query tabs,
@@ -10,37 +10,37 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.database</depends>
 
-    <resource-bundle>messages.OraSessionsBundle</resource-bundle>
+    <resource-bundle>messages.DGOracleSessionBundle</resource-bundle>
 
     <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="Oracle Sessions"
+        <toolWindow id="DGOracleSession"
                     anchor="bottom"
-                    icon="/icons/oraSessions.svg"
-                    factoryClass="io.github.andrkonst.orasessions.toolwindow.SessionsToolWindowFactory"/>
-        <notificationGroup id="Oracle Sessions" displayType="BALLOON"/>
-        <fileEditorProvider implementation="io.github.andrkonst.orasessions.html.HtmlReportEditorProvider"/>
+                    icon="/icons/dgOracleSession.svg"
+                    factoryClass="io.github.andrkonst.dgoraclesession.toolwindow.SessionsToolWindowFactory"/>
+        <notificationGroup id="DGOracleSession" displayType="BALLOON"/>
+        <fileEditorProvider implementation="io.github.andrkonst.dgoraclesession.html.HtmlReportEditorProvider"/>
         <applicationConfigurable parentId="tools"
-                                 id="io.github.andrkonst.orasessions.settings"
-                                 instance="io.github.andrkonst.orasessions.settings.QueryTabsConfigurable"
+                                 id="io.github.andrkonst.dgoraclesession.settings"
+                                 instance="io.github.andrkonst.dgoraclesession.settings.QueryTabsConfigurable"
                                  key="settings.display.name"/>
     </extensions>
 
     <actions>
-        <group id="OraSessions.SessionActions">
-            <action id="OraSessions.KillSessionImmediate"
-                    class="io.github.andrkonst.orasessions.actions.KillSessionImmediateAction"
+        <group id="DGOracleSession.SessionActions">
+            <action id="DGOracleSession.KillSessionImmediate"
+                    class="io.github.andrkonst.dgoraclesession.actions.KillSessionImmediateAction"
                     icon="AllIcons.Debugger.KillProcess"/>
-            <action id="OraSessions.DisconnectSessionImmediate"
-                    class="io.github.andrkonst.orasessions.actions.DisconnectSessionImmediateAction"
+            <action id="DGOracleSession.DisconnectSessionImmediate"
+                    class="io.github.andrkonst.dgoraclesession.actions.DisconnectSessionImmediateAction"
                     icon="AllIcons.Actions.Exit"/>
         </group>
-        <action id="OraSessions.OpenSettings"
-                class="io.github.andrkonst.orasessions.actions.OpenSettingsAction"
+        <action id="DGOracleSession.OpenSettings"
+                class="io.github.andrkonst.dgoraclesession.actions.OpenSettingsAction"
                 icon="AllIcons.General.Settings"/>
-        <group id="OraSessions.ToolbarActions">
-            <reference ref="OraSessions.SessionActions"/>
+        <group id="DGOracleSession.ToolbarActions">
+            <reference ref="DGOracleSession.SessionActions"/>
             <separator/>
-            <reference ref="OraSessions.OpenSettings"/>
+            <reference ref="DGOracleSession.OpenSettings"/>
         </group>
     </actions>
 </idea-plugin>
