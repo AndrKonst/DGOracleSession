@@ -4,7 +4,15 @@ import com.intellij.database.dataSource.LocalDataSource
 import com.intellij.database.datagrid.DataGrid
 import com.intellij.database.datagrid.DataGridListener
 import com.intellij.database.datagrid.GridRequestSource
+import com.intellij.database.datagrid.GridUtil
+import com.intellij.database.run.ui.DataAccessType
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.DataKey
+import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.DefaultActionGroup
+import com.intellij.openapi.actionSystem.Separator
+import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Splitter
 import com.intellij.openapi.util.Disposer
@@ -15,6 +23,7 @@ import com.intellij.util.Alarm
 import io.github.andrkonst.orasessions.OraSessionsBundle
 import io.github.andrkonst.orasessions.grid.GridRows
 import io.github.andrkonst.orasessions.grid.QueryGrid
+import io.github.andrkonst.orasessions.model.SessionRef
 import io.github.andrkonst.orasessions.model.TabDef
 import io.github.andrkonst.orasessions.toolwindow.detail.DetailPanel
 import java.awt.BorderLayout
@@ -28,7 +37,7 @@ class QueryTabPanel(
     private val project: Project,
     val tab: TabDef,
     parentDisposable: Disposable,
-) : JPanel(BorderLayout()), Disposable {
+) : JPanel(BorderLayout()), Disposable, UiDataProvider {
     private var dataSource: LocalDataSource? = null
     private var queryGrid: QueryGrid? = null
     private val gridHolder = JPanel(BorderLayout())
@@ -74,17 +83,20 @@ class QueryTabPanel(
         if (queryGrid != null) return
         val ds = dataSource ?: return
         if (tab.sql.isBlank()) return
-        val grid = QueryGrid(project, ds, tab.sql, this)
+        val popupActions = DefaultActionGroup(
+            ActionManager.getInstance().getAction(SESSION_ACTIONS_GROUP),
+            Separator.create(),
+            GridUtil.getGridPopupActions(),
+        )
+        val grid = QueryGrid(project, ds, tab.sql, this, popupActions)
         queryGrid = grid
-        if (detailPanels.isNotEmpty()) {
-            grid.grid.addDataGridListener(object : DataGridListener {
-                override fun onSelectionChanged(dataGrid: DataGrid) = scheduleDetailsUpdate(reload = false)
-                override fun onContentChanged(dataGrid: DataGrid, place: GridRequestSource.RequestPlace?) {
-                    restoreSelection(dataGrid)
-                    scheduleDetailsUpdate(reload = true)
-                }
-            }, grid)
-        }
+        grid.grid.addDataGridListener(object : DataGridListener {
+            override fun onSelectionChanged(dataGrid: DataGrid) = scheduleDetailsUpdate(reload = false)
+            override fun onContentChanged(dataGrid: DataGrid, place: GridRequestSource.RequestPlace?) {
+                restoreSelection(dataGrid)
+                scheduleDetailsUpdate(reload = true)
+            }
+        }, grid)
         setGridComponent(grid.component)
     }
 
@@ -107,9 +119,9 @@ class QueryTabPanel(
     }
 
     private fun updateDetails(reload: Boolean) {
-        if (detailPanels.isEmpty()) return
         val values = queryGrid?.grid?.let(GridRows::selectedValues)
         if (values != null) selectedKey = GridRows.key(values)
+        if (detailPanels.isEmpty()) return
         detailPanels.forEach { it.update(dataSource, values, reload) }
     }
 
@@ -139,11 +151,32 @@ class QueryTabPanel(
         selectedKey = null
     }
 
+    fun hasSessionColumns(): Boolean {
+        val grid = queryGrid?.grid ?: return false
+        val names = grid.getDataModel(DataAccessType.DATABASE_DATA).columns.map { it.name.lowercase() }
+        return "sid" in names && "serial#" in names
+    }
+
+    fun selectedSessions(): List<SessionRef> {
+        val grid = queryGrid?.grid ?: return emptyList()
+        return GridRows.selectedRowsValues(grid).mapNotNull(SessionRef::fromRow)
+    }
+
+    fun reloadGrid() {
+        queryGrid?.reload()
+    }
+
+    override fun uiDataSnapshot(sink: DataSink) {
+        sink[KEY] = this
+    }
+
     override fun dispose() {
         queryGrid = null
     }
 
-    private companion object {
-        const val DETAILS_DELAY_MS = 300
+    companion object {
+        val KEY: DataKey<QueryTabPanel> = DataKey.create("OraSessions.QueryTabPanel")
+        const val SESSION_ACTIONS_GROUP = "OraSessions.SessionActions"
+        private const val DETAILS_DELAY_MS = 300
     }
 }

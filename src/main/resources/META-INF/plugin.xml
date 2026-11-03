@@ -17,5 +17,17 @@
                     anchor="bottom"
                     icon="/icons/oraSessions.svg"
                     factoryClass="io.github.andrkonst.orasessions.toolwindow.SessionsToolWindowFactory"/>
+        <notificationGroup id="Oracle Sessions" displayType="BALLOON"/>
     </extensions>
+
+    <actions>
+        <group id="OraSessions.SessionActions">
+            <action id="OraSessions.KillSessionImmediate"
+                    class="io.github.andrkonst.orasessions.actions.KillSessionImmediateAction"
+                    icon="AllIcons.Debugger.KillProcess"/>
+            <action id="OraSessions.DisconnectSessionImmediate"
+                    class="io.github.andrkonst.orasessions.actions.DisconnectSessionImmediateAction"
+                    icon="AllIcons.Actions.Exit"/>
+        </group>
+    </actions>
 </idea-plugin>
