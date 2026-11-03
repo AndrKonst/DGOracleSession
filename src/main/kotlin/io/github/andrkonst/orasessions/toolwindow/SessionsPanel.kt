@@ -4,6 +4,7 @@ import com.intellij.database.dataSource.LocalDataSource
 import com.intellij.database.model.RawDataSource
 import com.intellij.database.psi.DataSourceManager
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
@@ -12,10 +13,11 @@ import com.intellij.openapi.util.Disposer
 import com.intellij.ui.SimpleListCellRenderer
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBPanelWithEmptyText
+import com.intellij.ui.components.JBTabbedPane
 import com.intellij.util.ui.JBUI
 import io.github.andrkonst.orasessions.OraSessionsBundle
 import io.github.andrkonst.orasessions.SessionsService
-import io.github.andrkonst.orasessions.grid.QueryGrid
+import io.github.andrkonst.orasessions.settings.QueryTabsSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.awt.BorderLayout
@@ -28,9 +30,10 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
     private val dataSourceModel = DefaultComboBoxModel<LocalDataSource>()
     private val dataSourceCombo = ComboBox(dataSourceModel)
     private val contentPanel = JPanel(BorderLayout())
-    private val emptyPanel = JBPanelWithEmptyText()
-    private var queryGrid: QueryGrid? = null
+    private val tabbedPane = JBTabbedPane()
+    private val tabPanels = mutableListOf<QueryTabPanel>()
     private var updatingCombo = false
+    private var rebuildingTabs = false
 
     init {
         Disposer.register(parentDisposable, this)
@@ -47,6 +50,7 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
             add(JBLabel(OraSessionsBundle.message("datasource.label")))
             add(dataSourceCombo)
         }
+        tabbedPane.addChangeListener { activateSelectedTab() }
         setContent(contentPanel)
 
         project.messageBus.connect(this).subscribe(DataSourceManager.TOPIC, object : DataSourceManager.Listener {
@@ -54,8 +58,48 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
             override fun <T : RawDataSource> dataSourceRemoved(manager: DataSourceManager<T>, dataSource: T) = reloadDataSources()
             override fun <T : RawDataSource> dataSourceChanged(manager: DataSourceManager<T>?, dataSource: T?) = reloadDataSources()
         })
+        ApplicationManager.getApplication().messageBus.connect(this)
+            .subscribe(QueryTabsSettings.TOPIC, QueryTabsSettings.Listener { rebuildTabs() })
 
+        rebuildTabs()
         reloadDataSources(service.dataSource ?: service.restoreDataSource(), initial = true)
+    }
+
+    private fun rebuildTabs() {
+        val selectedCaption = tabPanels.getOrNull(tabbedPane.selectedIndex)?.tab?.caption
+        rebuildingTabs = true
+        try {
+            tabbedPane.removeAll()
+            tabPanels.forEach { Disposer.dispose(it) }
+            tabPanels.clear()
+
+            QueryTabsSettings.getInstance().tabs.forEach { tab ->
+                val panel = QueryTabPanel(project, tab, this)
+                panel.setDataSource(service.dataSource)
+                tabPanels += panel
+                tabbedPane.addTab(tab.caption, panel)
+            }
+            tabPanels.indexOfFirst { it.tab.caption == selectedCaption }.takeIf { it >= 0 }?.let { tabbedPane.selectedIndex = it }
+        }
+        finally {
+            rebuildingTabs = false
+        }
+
+        contentPanel.removeAll()
+        if (tabPanels.isEmpty()) {
+            contentPanel.add(JBPanelWithEmptyText().withEmptyText(OraSessionsBundle.message("tabs.empty")), BorderLayout.CENTER)
+        }
+        else {
+            contentPanel.add(tabbedPane, BorderLayout.CENTER)
+        }
+        contentPanel.revalidate()
+        contentPanel.repaint()
+        activateSelectedTab()
+    }
+
+    private fun activateSelectedTab() {
+        if (rebuildingTabs) return
+        tabPanels.getOrNull(tabbedPane.selectedIndex)?.activate()
     }
 
     private fun reloadDataSources(preferred: LocalDataSource? = service.dataSource, initial: Boolean = false) {
@@ -80,30 +124,9 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
 
     private fun onDataSourceSelected(ds: LocalDataSource?) {
         service.selectDataSource(ds)
-        queryGrid?.let { Disposer.dispose(it) }
-        queryGrid = null
-        contentPanel.removeAll()
-        if (ds == null) {
-            emptyPanel.emptyText.text = OraSessionsBundle.message(
-                if (dataSourceModel.size == 0) "status.no.oracle.sources" else "toolwindow.empty.text"
-            )
-            contentPanel.add(emptyPanel, BorderLayout.CENTER)
-        }
-        else {
-            val grid = QueryGrid(project, ds, TEST_QUERY, this)
-            queryGrid = grid
-            contentPanel.add(grid.component, BorderLayout.CENTER)
-        }
-        contentPanel.revalidate()
-        contentPanel.repaint()
+        tabPanels.forEach { it.setDataSource(ds) }
+        activateSelectedTab()
     }
 
     override fun dispose() = Unit
-
-    private companion object {
-        const val TEST_QUERY = """select sid, serial#, username, status, osuser, machine, program, module, sql_id, event, logon_time
-  from v${'$'}session
- where type = 'USER'
- order by sid"""
-    }
 }
