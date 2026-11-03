@@ -12,8 +12,6 @@ Kill / Disconnect session actions. Inspired by the Sessions window of PL/SQL Dev
   selected row as a bind variable: `:sid`, `:serial#`, `:sql_id`, …
   - *Table* mode shows the result in a grid.
   - *Text* mode shows SQL-highlighted text; rows are separated by new lines.
-  - Add `/* concatenate */` to a detail query to glue the values without separators
-    (handy for `v$sqltext_with_newlines`).
   - Details are refreshed when the selection changes and when the tab grid is reloaded.
 - **Kill / Disconnect.** `ALTER SYSTEM KILL SESSION '…' IMMEDIATE` and
   `ALTER SYSTEM DISCONNECT SESSION '…' IMMEDIATE` for one or several selected rows, with confirmation.
@@ -50,7 +48,7 @@ Detail examples for it:
 
 | Caption  | Mode  | SQL |
 |----------|-------|-----|
-| SQL Text | Text  | `select sql_text from v$sqltext_with_newlines where sql_id = :sql_id order by piece /* concatenate */` |
+| SQL Text | Text  | `select sql_fulltext from v$sql where sql_id = :sql_id and rownum = 1` |
 | Locks    | Table | `select * from v$lock where sid = :sid` |
 | Wait     | Table | `select sid, event, wait_class, state, seconds_in_wait from v$session_wait where sid = :sid` |
 

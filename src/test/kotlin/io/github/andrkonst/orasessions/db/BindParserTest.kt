@@ -33,8 +33,8 @@ class BindParserTest {
     }
 
     @Test
-    fun `skips comments and concatenate hint`() {
-        val p = BindParser.parse("select a -- :no\n from t /* :no */ where b = :yes /* concatenate */")
+    fun `skips comments`() {
+        val p = BindParser.parse("select a -- :no\n from t /* :no */ where b = :yes")
         assertEquals(listOf("yes"), p.names)
     }
 

@@ -77,12 +77,8 @@ abstract class DetailPanel(
     override fun dispose() = Unit
 
     companion object {
-        private val CONCATENATE_HINT = Regex("""/\*\s*concatenate\s*\*/""", RegexOption.IGNORE_CASE)
-
-        fun hasConcatenateHint(sql: String): Boolean = CONCATENATE_HINT.containsMatchIn(sql)
-
         fun create(project: Project, detail: DetailDef, parent: Disposable): DetailPanel {
-            val panel = if (detail.mode == DetailMode.TEXT || hasConcatenateHint(detail.sql)) {
+            val panel = if (detail.mode == DetailMode.TEXT) {
                 DetailTextPanel(project, detail)
             }
             else {
