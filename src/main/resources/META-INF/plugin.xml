@@ -1,0 +1,21 @@
+<idea-plugin>
+    <id>io.github.andrkonst.orasessions</id>
+    <name>Oracle Sessions</name>
+    <vendor url="https://github.com/AndrKonst">Andronov Konstantin</vendor>
+    <description><![CDATA[
+        <p>Oracle sessions monitor for DataGrip: a tool window with configurable query tabs,
+        similar to the Sessions window in PL/SQL Developer.</p>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.database</depends>
+
+    <resource-bundle>messages.OraSessionsBundle</resource-bundle>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="Oracle Sessions"
+                    anchor="bottom"
+                    icon="/icons/oraSessions.svg"
+                    factoryClass="io.github.andrkonst.orasessions.toolwindow.SessionsToolWindowFactory"/>
+    </extensions>
+</idea-plugin>
