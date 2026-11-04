@@ -12,6 +12,7 @@ import com.intellij.database.run.ui.DataAccessType
 /** Values of grid rows keyed by lower-cased column name. */
 object GridRows {
     private val KEY_COLUMNS = listOf("sid", "serial#")
+    private const val INSTANCE_COLUMN = "inst_id"
 
     fun selectedValues(grid: DataGrid): Map<String, Any?>? {
         val model = grid.getDataModel(DataAccessType.DATABASE_DATA)
@@ -27,9 +28,12 @@ object GridRows {
             .map { rowValues(model, it) }
     }
 
-    /** Row identity for keeping the selection across reloads: SID + SERIAL# when both columns exist. */
-    fun key(values: Map<String, Any?>): List<String>? =
-        if (KEY_COLUMNS.all { it in values }) KEY_COLUMNS.map { values[it]?.toString().orEmpty() } else null
+    /** Row identity for keeping the selection across reloads: SID + SERIAL# (+ INST_ID) when the columns exist. */
+    fun key(values: Map<String, Any?>): List<String>? {
+        if (!KEY_COLUMNS.all { it in values }) return null
+        val columns = if (INSTANCE_COLUMN in values) KEY_COLUMNS + INSTANCE_COLUMN else KEY_COLUMNS
+        return columns.map { values[it]?.toString().orEmpty() }
+    }
 
     fun findRow(grid: DataGrid, key: List<String>): ModelIndex<GridRow>? {
         val model = grid.getDataModel(DataAccessType.DATABASE_DATA)

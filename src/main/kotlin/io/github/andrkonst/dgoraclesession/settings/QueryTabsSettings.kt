@@ -34,10 +34,6 @@ class QueryTabsSettings : PersistentStateComponent<QueryTabsSettings.SettingsSta
             ApplicationManager.getApplication().messageBus.syncPublisher(TOPIC).tabsChanged()
         }
 
-    fun resetToDefaults() {
-        tabs = DefaultConfig.tabs()
-    }
-
     fun interface Listener {
         fun tabsChanged()
     }

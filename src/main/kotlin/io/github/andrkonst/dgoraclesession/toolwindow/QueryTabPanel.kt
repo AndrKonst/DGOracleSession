@@ -27,6 +27,7 @@ import io.github.andrkonst.dgoraclesession.model.SessionRef
 import io.github.andrkonst.dgoraclesession.model.TabDef
 import io.github.andrkonst.dgoraclesession.toolwindow.detail.DetailPanel
 import java.awt.BorderLayout
+import java.awt.Component
 import javax.swing.JPanel
 
 /**
@@ -91,13 +92,22 @@ class QueryTabPanel(
         val grid = QueryGrid(project, ds, tab.sql, this, popupActions)
         queryGrid = grid
         grid.grid.addDataGridListener(object : DataGridListener {
-            override fun onSelectionChanged(dataGrid: DataGrid) = scheduleDetailsUpdate(reload = false)
+            override fun onSelectionChanged(dataGrid: DataGrid) {
+                if (!grid.isBusy) rememberSelection(dataGrid)
+                scheduleDetailsUpdate(reload = false)
+            }
             override fun onContentChanged(dataGrid: DataGrid, place: GridRequestSource.RequestPlace?) {
                 restoreSelection(dataGrid)
                 scheduleDetailsUpdate(reload = true)
             }
         }, grid)
         setGridComponent(grid.component)
+    }
+
+    /** Remembers the row selected by the user right away, so a reload within the details delay does not bring back the old row. */
+    private fun rememberSelection(grid: DataGrid) {
+        val values = GridRows.selectedValues(grid) ?: return
+        selectedKey = GridRows.key(values)
     }
 
     private fun restoreSelection(grid: DataGrid) {
@@ -120,7 +130,6 @@ class QueryTabPanel(
 
     private fun updateDetails(reload: Boolean) {
         val values = queryGrid?.grid?.let(GridRows::selectedValues)
-        if (values != null) selectedKey = GridRows.key(values)
         if (detailPanels.isEmpty()) return
         detailPanels.forEach { it.update(dataSource, values, reload) }
     }
@@ -138,7 +147,7 @@ class QueryTabPanel(
         setGridComponent(JBPanelWithEmptyText().apply { if (key != null) emptyText.text = DGOracleSessionBundle.message(key) })
     }
 
-    private fun setGridComponent(component: java.awt.Component) {
+    private fun setGridComponent(component: Component) {
         gridHolder.removeAll()
         gridHolder.add(component, BorderLayout.CENTER)
         gridHolder.revalidate()

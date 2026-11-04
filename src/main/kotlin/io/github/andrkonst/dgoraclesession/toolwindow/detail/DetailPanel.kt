@@ -3,12 +3,14 @@ package io.github.andrkonst.dgoraclesession.toolwindow.detail
 import com.intellij.database.dataSource.LocalDataSource
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBPanelWithEmptyText
 import io.github.andrkonst.dgoraclesession.DGOracleSessionBundle
 import io.github.andrkonst.dgoraclesession.db.BindParser
 import io.github.andrkonst.dgoraclesession.model.DetailDef
 import io.github.andrkonst.dgoraclesession.model.DetailMode
 import java.awt.BorderLayout
+import java.awt.Component
 import javax.swing.JPanel
 
 /**
@@ -67,7 +69,7 @@ abstract class DetailPanel(
         setBody(JBPanelWithEmptyText().withEmptyText(text))
     }
 
-    protected fun setBody(component: java.awt.Component) {
+    protected fun setBody(component: Component) {
         removeAll()
         add(component, BorderLayout.CENTER)
         revalidate()
@@ -84,7 +86,7 @@ abstract class DetailPanel(
             else {
                 DetailGridPanel(project, detail)
             }
-            com.intellij.openapi.util.Disposer.register(parent, panel)
+            Disposer.register(parent, panel)
             return panel
         }
     }

@@ -21,7 +21,10 @@ import com.intellij.util.ui.JBUI
 import io.github.andrkonst.dgoraclesession.DGOracleSessionBundle
 import io.github.andrkonst.dgoraclesession.SessionsService
 import io.github.andrkonst.dgoraclesession.settings.QueryTabsSettings
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import java.awt.BorderLayout
 import java.awt.FlowLayout
@@ -30,6 +33,8 @@ import javax.swing.JPanel
 
 class SessionsPanel(private val project: Project, parentDisposable: Disposable) : SimpleToolWindowPanel(true, true), Disposable {
     private val service = SessionsService.getInstance(project)
+    private val job = SupervisorJob(service.scope.coroutineContext.job)
+    private val scope = CoroutineScope(service.scope.coroutineContext + job)
     private val dataSourceModel = DefaultComboBoxModel<LocalDataSource>()
     private val dataSourceCombo = ComboBox(dataSourceModel)
     private val contentPanel = JPanel(BorderLayout())
@@ -110,7 +115,7 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
     }
 
     private fun reloadDataSources(preferred: LocalDataSource? = service.dataSource, initial: Boolean = false) {
-        service.scope.launch(Dispatchers.EDT) {
+        scope.launch(Dispatchers.EDT) {
             val sources = service.oracleDataSources()
             val selected = sources.firstOrNull { it.uniqueId == preferred?.uniqueId } ?: sources.singleOrNull()
             val current = (0 until dataSourceModel.size).map { dataSourceModel.getElementAt(it) }
@@ -140,7 +145,9 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
         sink[QueryTabPanel.KEY] = tabPanels.getOrNull(tabbedPane.selectedIndex)
     }
 
-    override fun dispose() = Unit
+    override fun dispose() {
+        job.cancel()
+    }
 
     private companion object {
         const val TOOLBAR_PLACE = "DGOracleSession.Toolbar"

@@ -4,6 +4,7 @@ import com.intellij.openapi.options.ConfigurationException
 import com.intellij.openapi.options.SearchableConfigurable
 import com.intellij.openapi.ui.ComboBox
 import com.intellij.ui.CollectionListModel
+import com.intellij.ui.DocumentAdapter
 import com.intellij.ui.JBSplitter
 import com.intellij.ui.SimpleListCellRenderer
 import com.intellij.ui.ToolbarDecorator
@@ -20,6 +21,7 @@ import io.github.andrkonst.dgoraclesession.model.DetailDef
 import io.github.andrkonst.dgoraclesession.model.DetailMode
 import io.github.andrkonst.dgoraclesession.model.TabDef
 import java.awt.BorderLayout
+import java.util.Collections
 import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -145,7 +147,7 @@ class QueryTabsConfigurable : SearchableConfigurable {
     }
 
     private fun bindListeners() {
-        tabCaption.document.addDocumentListener(object : com.intellij.ui.DocumentAdapter() {
+        tabCaption.document.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: DocumentEvent) {
                 if (loading) return
                 selectedTab()?.caption = tabCaption.text
@@ -153,7 +155,7 @@ class QueryTabsConfigurable : SearchableConfigurable {
             }
         })
         tabSql.onTextChanged { if (!loading) selectedTab()?.sql = it }
-        detailCaption.document.addDocumentListener(object : com.intellij.ui.DocumentAdapter() {
+        detailCaption.document.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: DocumentEvent) {
                 if (loading) return
                 selectedDetail()?.caption = detailCaption.text
@@ -167,12 +169,12 @@ class QueryTabsConfigurable : SearchableConfigurable {
             updateHtmlFields()
         }
         detailSql.onTextChanged { if (!loading) selectedDetail()?.sql = it }
-        detailHtmlColumns.document.addDocumentListener(object : com.intellij.ui.DocumentAdapter() {
+        detailHtmlColumns.document.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: DocumentEvent) {
                 if (!loading) selectedDetail()?.htmlColumns = detailHtmlColumns.text
             }
         })
-        detailKeyColumns.document.addDocumentListener(object : com.intellij.ui.DocumentAdapter() {
+        detailKeyColumns.document.addDocumentListener(object : DocumentAdapter() {
             override fun textChanged(e: DocumentEvent) {
                 if (!loading) selectedDetail()?.keyColumns = detailKeyColumns.text
             }
@@ -219,7 +221,7 @@ class QueryTabsConfigurable : SearchableConfigurable {
         val from = detailsList.selectedIndex
         val to = from + delta
         if (from < 0 || to !in tab.details.indices) return
-        java.util.Collections.swap(tab.details, from, to)
+        Collections.swap(tab.details, from, to)
         detailsModel.replaceAll(tab.details)
         detailsList.selectedIndex = to
     }
@@ -258,6 +260,9 @@ class QueryTabsConfigurable : SearchableConfigurable {
                     throw ConfigurationException(DGOracleSessionBundle.message("settings.error.detail.caption", j + 1, tab.caption))
                 }
             }
+        }
+        currentTabs().groupBy { it.caption.trim() }.entries.firstOrNull { it.value.size > 1 }?.let {
+            throw ConfigurationException(DGOracleSessionBundle.message("settings.error.tab.duplicate", it.key))
         }
         QueryTabsSettings.getInstance().tabs = currentTabs()
     }

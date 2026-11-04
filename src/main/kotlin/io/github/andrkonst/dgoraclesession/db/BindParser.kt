@@ -1,9 +1,13 @@
 package io.github.andrkonst.dgoraclesession.db
 
 import java.math.BigDecimal
+import java.math.BigInteger
+import java.sql.Timestamp
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Date
 
@@ -37,6 +41,7 @@ class BindParser private constructor(val sql: String, private val binds: List<Bi
     companion object {
         private val TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS")
         private val DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        private val TIMESTAMP_TZ_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS xxx")
 
         fun parse(sql: String): BindParser {
             val binds = mutableListOf<Bind>()
@@ -80,20 +85,23 @@ class BindParser private constructor(val sql: String, private val binds: List<Bi
         fun toLiteral(value: Any?): String = when (value) {
             null -> "null"
             is BigDecimal -> value.toPlainString()
-            is Int, is Long, is Short, is Byte, is java.math.BigInteger -> value.toString()
+            is Int, is Long, is Short, is Byte, is BigInteger -> value.toString()
             is Double -> if (value.isFinite()) BigDecimal.valueOf(value).toPlainString() else quote(value.toString())
             is Float -> if (value.isFinite()) BigDecimal(value.toString()).toPlainString() else quote(value.toString())
             is java.sql.Date -> "date '${value.toLocalDate().format(DATE_FORMAT)}'"
-            is java.sql.Timestamp -> timestamp(value.toLocalDateTime())
-            is Date -> timestamp(LocalDateTime.ofInstant(value.toInstant(), java.time.ZoneId.systemDefault()))
+            is Timestamp -> timestamp(value.toLocalDateTime())
+            is Date -> timestamp(LocalDateTime.ofInstant(value.toInstant(), ZoneId.systemDefault()))
             is LocalDateTime -> timestamp(value)
-            is OffsetDateTime -> timestamp(value.toLocalDateTime())
+            is OffsetDateTime -> timestampTz(value)
+            is ZonedDateTime -> timestampTz(value.toOffsetDateTime())
             is LocalDate -> "date '${value.format(DATE_FORMAT)}'"
             is Boolean -> if (value) "1" else "0"
             else -> quote(value.toString())
         }
 
         private fun timestamp(value: LocalDateTime) = "timestamp '${value.format(TIMESTAMP_FORMAT)}'"
+
+        private fun timestampTz(value: OffsetDateTime) = "timestamp '${value.format(TIMESTAMP_TZ_FORMAT)}'"
 
         private fun quote(text: String) = "'" + text.replace("'", "''") + "'"
 

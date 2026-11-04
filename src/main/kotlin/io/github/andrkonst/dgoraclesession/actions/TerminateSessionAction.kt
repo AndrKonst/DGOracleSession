@@ -1,6 +1,5 @@
 package io.github.andrkonst.dgoraclesession.actions
 
-import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnActionEvent
@@ -9,6 +8,7 @@ import com.intellij.openapi.project.DumbAwareAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.MessageDialogBuilder
 import io.github.andrkonst.dgoraclesession.DGOracleSessionBundle
+import io.github.andrkonst.dgoraclesession.DGOracleSessionNotifications
 import io.github.andrkonst.dgoraclesession.SessionsService
 import io.github.andrkonst.dgoraclesession.model.SessionRef
 import io.github.andrkonst.dgoraclesession.model.TerminateMode
@@ -37,8 +37,17 @@ abstract class TerminateSessionAction(private val mode: TerminateMode) : DumbAwa
         val service = SessionsService.getInstance(project)
         service.scope.launch {
             val failures = mutableListOf<Pair<SessionRef, String>>()
+            var instance: String? = null
             for (session in sessions) {
                 try {
+                    // DISCONNECT SESSION cannot address another RAC instance
+                    if (mode == TerminateMode.DISCONNECT_IMMEDIATE && session.instId != null) {
+                        val current = instance ?: service.adminInstance().also { instance = it }
+                        if (session.instId.toString() != current) {
+                            failures += session to DGOracleSessionBundle.message("terminate.other.instance", session.instId.toString(), current.orEmpty())
+                            continue
+                        }
+                    }
                     service.execute(mode.sql(session))
                 }
                 catch (ex: CancellationException) {
@@ -69,20 +78,16 @@ abstract class TerminateSessionAction(private val mode: TerminateMode) : DumbAwa
     }
 
     private fun notify(project: Project, sessions: List<SessionRef>, failures: List<Pair<SessionRef, String>>) {
-        val group = NotificationGroupManager.getInstance().getNotificationGroup(NOTIFICATION_GROUP)
         val succeeded = sessions.size - failures.size
         if (succeeded > 0) {
-            group.createNotification(
-                DGOracleSessionBundle.message("terminate.done.${mode.key}", succeeded),
-                NotificationType.INFORMATION,
-            ).notify(project)
+            DGOracleSessionNotifications.notify(
+                project, DGOracleSessionBundle.message("terminate.done.${mode.key}", succeeded), null, NotificationType.INFORMATION,
+            )
         }
         failures.forEach { (session, message) ->
-            group.createNotification(
-                DGOracleSessionBundle.message("terminate.failed.${mode.key}", session.id),
-                message,
-                NotificationType.ERROR,
-            ).notify(project)
+            DGOracleSessionNotifications.notify(
+                project, DGOracleSessionBundle.message("terminate.failed.${mode.key}", session.id), message, NotificationType.ERROR,
+            )
         }
     }
 
@@ -92,9 +97,8 @@ abstract class TerminateSessionAction(private val mode: TerminateMode) : DumbAwa
             TerminateMode.DISCONNECT_IMMEDIATE -> "disconnect"
         }
 
-    companion object {
-        const val NOTIFICATION_GROUP = "DGOracleSession"
-        private const val MAX_LISTED = 10
+    private companion object {
+        const val MAX_LISTED = 10
     }
 }
 

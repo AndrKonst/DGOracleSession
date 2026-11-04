@@ -8,22 +8,24 @@ import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.util.UserDataHolderBase
+import com.intellij.openapi.util.io.FileUtil
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.LightVirtualFile
 import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
 import java.beans.PropertyChangeListener
+import java.io.File
 import javax.swing.JComponent
 
-/** Editor tab showing an HTML file from disk in the embedded Chromium. */
-class HtmlReportFile(name: String, val reportUrl: String) : LightVirtualFile(name) {
+/** Editor tab showing an HTML file from disk in the embedded Chromium. The file is deleted when the editor is closed. */
+class HtmlReportFile(name: String, val report: File) : LightVirtualFile(name) {
     init {
         isWritable = false
     }
 }
 
 class HtmlReportEditor(private val file: HtmlReportFile) : UserDataHolderBase(), FileEditor {
-    private val browser = JBCefBrowser(file.reportUrl)
+    private val browser = JBCefBrowser(file.report.toPath().toUri().toString())
 
     override fun getComponent(): JComponent = browser.component
 
@@ -45,6 +47,7 @@ class HtmlReportEditor(private val file: HtmlReportFile) : UserDataHolderBase(),
 
     override fun dispose() {
         Disposer.dispose(browser)
+        FileUtil.delete(file.report)
     }
 }
 

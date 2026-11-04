@@ -8,6 +8,11 @@ import io.github.andrkonst.dgoraclesession.model.QueryResult
 import java.math.BigDecimal
 import java.sql.Timestamp
 import java.sql.Types
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZonedDateTime
+import java.util.Date
 
 object QueryExecutor {
     const val DEFAULT_MAX_ROWS = 10_000
@@ -19,14 +24,15 @@ object QueryExecutor {
         binds: List<Any?> = emptyList(),
         maxRows: Int = DEFAULT_MAX_ROWS,
         timeoutSec: Int = DEFAULT_TIMEOUT_SEC,
+        canceller: StatementCanceller? = null,
     ): QueryResult {
-        val started = System.nanoTime()
         val statement = connection.remoteConnection.prepareStatement(normalize(sql))
         try {
             statement.setMaxRows(maxRows + 1)
             statement.setQueryTimeout(timeoutSec)
             statement.setFetchSize(500)
             bind(statement, binds)
+            canceller?.register(statement)
             val rs = statement.executeQuery()
             try {
                 val meta = rs.metaData
@@ -40,29 +46,33 @@ object QueryExecutor {
                     }
                     rows += columns.mapIndexed { i, c -> read(rs, i + 1, c.sqlType) }
                 }
-                return QueryResult(columns, rows, truncated, (System.nanoTime() - started) / 1_000_000)
+                return QueryResult(columns, rows, truncated)
             }
             finally {
                 rs.close()
             }
         }
         finally {
+            canceller?.unregister()
             statement.close()
         }
     }
 
-    fun execute(connection: DatabaseConnection, sql: String, timeoutSec: Int = DEFAULT_TIMEOUT_SEC) {
+    fun execute(connection: DatabaseConnection, sql: String, timeoutSec: Int = DEFAULT_TIMEOUT_SEC, canceller: StatementCanceller? = null) {
         val statement = connection.remoteConnection.prepareStatement(normalize(sql))
         try {
             statement.setQueryTimeout(timeoutSec)
+            canceller?.register(statement)
             statement.execute()
         }
         finally {
+            canceller?.unregister()
             statement.close()
         }
     }
 
-    private fun normalize(sql: String): String = sql.trim().removeSuffix(";").trimEnd()
+    /** SQL text without surrounding whitespace and the trailing semicolon, which JDBC does not accept. */
+    fun normalize(sql: String): String = sql.trim().removeSuffix(";").trimEnd()
 
     private fun bind(statement: RemotePreparedStatement, binds: List<Any?>) {
         binds.forEachIndexed { i, value ->
@@ -70,8 +80,15 @@ object QueryExecutor {
             when (value) {
                 null -> statement.setNull(index, Types.VARCHAR)
                 is BigDecimal -> statement.setBigDecimal(index, value)
-                is Timestamp -> statement.setTimestamp(index, value)
+                is Boolean -> statement.setBigDecimal(index, if (value) BigDecimal.ONE else BigDecimal.ZERO)
                 is Number -> statement.setBigDecimal(index, BigDecimal(value.toString()))
+                is Timestamp -> statement.setTimestamp(index, value)
+                is java.sql.Date -> statement.setTimestamp(index, Timestamp.valueOf(value.toLocalDate().atStartOfDay()))
+                is Date -> statement.setTimestamp(index, Timestamp(value.time))
+                is LocalDateTime -> statement.setTimestamp(index, Timestamp.valueOf(value))
+                is LocalDate -> statement.setTimestamp(index, Timestamp.valueOf(value.atStartOfDay()))
+                is OffsetDateTime -> statement.setObject(index, value, Types.TIMESTAMP_WITH_TIMEZONE)
+                is ZonedDateTime -> statement.setObject(index, value.toOffsetDateTime(), Types.TIMESTAMP_WITH_TIMEZONE)
                 else -> statement.setString(index, value.toString())
             }
         }
@@ -81,7 +98,8 @@ object QueryExecutor {
         val value: Any? = when (sqlType) {
             Types.NUMERIC, Types.DECIMAL, Types.INTEGER, Types.SMALLINT, Types.TINYINT, Types.BIGINT,
             Types.FLOAT, Types.DOUBLE, Types.REAL -> rs.getBigDecimal(index)
-            Types.DATE, Types.TIMESTAMP, Types.TIMESTAMP_WITH_TIMEZONE -> rs.getTimestamp(index)
+            Types.DATE, Types.TIMESTAMP -> rs.getTimestamp(index)
+            // getTimestamp drops the time zone; the driver's text keeps it
             else -> rs.getString(index)
         }
         return if (rs.wasNull()) null else value
