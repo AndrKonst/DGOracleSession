@@ -66,7 +66,7 @@ class DetailTextPanel(project: Project, detail: DetailDef) : DetailPanel(project
                 Result.failure(e)
             }
             withContext(Dispatchers.EDT) {
-                result.onSuccess { showText(ds, toText(it)) }.onFailure { showError(it) }
+                result.onSuccess { showResult(ds, it) }.onFailure { showError(it) }
             }
         }
     }
@@ -76,8 +76,16 @@ class DetailTextPanel(project: Project, detail: DetailDef) : DetailPanel(project
             row.joinToString("\t") { it?.toString().orEmpty() }
         }
 
+    private fun showResult(ds: LocalDataSource, result: QueryResult) {
+        if (result.truncated) {
+            statusLabel.icon = AllIcons.General.Warning
+            statusLabel.text = DGOracleSessionBundle.message("detail.truncated", result.rows.size)
+        }
+        statusLabel.isVisible = result.truncated
+        showText(ds, toText(result))
+    }
+
     private fun showText(ds: LocalDataSource, text: String) {
-        statusLabel.isVisible = false
         val language = LocalDataSourceManager.getInstance(project).getQueryLanguage(ds) ?: PlainTextLanguage.INSTANCE
         val file = LightVirtualFile("detail.sql", language, text)
         val document = FileDocumentManager.getInstance().getDocument(file) ?: return

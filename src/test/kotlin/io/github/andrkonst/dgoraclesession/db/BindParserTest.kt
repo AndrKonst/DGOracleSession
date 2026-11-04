@@ -5,6 +5,8 @@ import org.junit.Test
 import java.math.BigDecimal
 import java.sql.Timestamp
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 class BindParserTest {
     @Test
@@ -84,5 +86,12 @@ class BindParserTest {
     @Test
     fun `big decimal is not in scientific notation`() {
         assertEquals("10000000000", BindParser.toLiteral(BigDecimal("1E+10")))
+    }
+
+    @Test
+    fun `time zone is kept in timestamp literals`() {
+        val value = OffsetDateTime.of(2026, 11, 3, 17, 5, 9, 0, ZoneOffset.ofHours(3))
+        assertEquals("timestamp '2026-11-03 17:05:09.000000000 +03:00'", BindParser.toLiteral(value))
+        assertEquals("timestamp '2026-11-03 17:05:09.000000000 +00:00'", BindParser.toLiteral(value.withOffsetSameLocal(ZoneOffset.UTC)))
     }
 }

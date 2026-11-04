@@ -44,6 +44,9 @@ class QueryGrid(
         hookUp.loader.loadFirstPage(GridRequestSource(DataGridRequestPlace(grid)))
     }
 
+    /** True while the grid is loading data: selection changes then come from the grid, not from the user. */
+    val isBusy: Boolean get() = hookUp.busyCount > 0
+
     fun reload() {
         hookUp.loader.reloadCurrentPage(GridRequestSource(DataGridRequestPlace(grid)))
     }

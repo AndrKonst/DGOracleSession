@@ -20,7 +20,9 @@ Kill / Disconnect session actions. Inspired by the Sessions window of PL/SQL Dev
   query is re-executed and the row is found by the values of *Row key columns*; without them the value is not re-read.
 - **Kill / Disconnect.** `ALTER SYSTEM KILL SESSION '…' IMMEDIATE` and
   `ALTER SYSTEM DISCONNECT SESSION '…' IMMEDIATE` for one or several selected rows, with confirmation.
-  Available in tabs whose result has `SID` and `SERIAL#` columns.
+  Available in tabs whose result has `SID` and `SERIAL#` columns. With an `INST_ID` column (`gv$session` on RAC)
+  Kill addresses the session instance (`'sid,serial#,@inst_id'`); Disconnect has no instance parameter in Oracle,
+  so it works only for sessions on the instance of the plugin connection.
 - **Settings** in *Settings → Tools → DGOracleSession*: add, remove and reorder tabs and details,
   edit their SQL with Oracle highlighting. Settings are global for the IDE.
 - The selected row is kept across reloads by `SID` + `SERIAL#`.
@@ -89,8 +91,15 @@ The build uses the local DataGrip installation from `platformLocalPath` in `grad
 
 - The plugin relies on the DataGrip Database and Grid APIs, which are public but not documented and may change
   between major versions. Re-run `./gradlew verifyPlugin` after a DataGrip upgrade.
-- Grids run in a dedicated DataGrip session named *DGOracleSession* (visible in the Services tool window);
-  text details and Kill / Disconnect use one more service connection. So the plugin has two sessions in `v$session`.
+- Grids run in a dedicated DataGrip session named *DGOracleSession* (visible in the Services tool window).
+  Text details and re-reading of HTML values use one service connection, Kill / Disconnect another one, so a slow
+  detail query does not delay terminating a session. So the plugin has up to three sessions in `v$session`.
+- *Table* details are executed by the DataGrip grid, which accepts only SQL text: bind variables are replaced
+  with literals, and every selected row produces a new statement in the shared pool (a hard parse).
+  On a busy production database prefer *Text* details, which use real bind variables, or keep *Table* details
+  few and cheap. The selection is debounced, so scrolling through rows does not run every query.
+- Re-reading a truncated HTML value wraps the detail query as `select * from (…) where "KEY" = ?`, so the query
+  must not return duplicate column names.
 
 ## License
 

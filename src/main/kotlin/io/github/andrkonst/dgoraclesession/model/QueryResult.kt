@@ -6,5 +6,4 @@ data class QueryResult(
     val columns: List<QueryColumn>,
     val rows: List<List<Any?>>,
     val truncated: Boolean,
-    val elapsedMs: Long,
 )

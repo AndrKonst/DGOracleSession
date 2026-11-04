@@ -3,59 +3,46 @@ package io.github.andrkonst.dgoraclesession.model
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.math.BigDecimal
-import java.sql.Timestamp
 import java.sql.Types
-import java.time.LocalDateTime
 
 class RowKeysTest {
-    private val start = LocalDateTime.of(2026, 11, 3, 10, 15, 30)
-
-    private val result = QueryResult(
-        columns = listOf(
-            QueryColumn("SQL_ID", Types.VARCHAR),
-            QueryColumn("SQL_EXEC_ID", Types.NUMERIC),
-            QueryColumn("SQL_EXEC_START", Types.DATE),
-            QueryColumn("REPORT", Types.CLOB),
-        ),
-        rows = listOf(
-            listOf("a1", BigDecimal("16777216"), Timestamp.valueOf(start), "<html>1</html>"),
-            listOf("a1", BigDecimal("16777217"), Timestamp.valueOf(start), "<html>2</html>"),
-            listOf("b2", BigDecimal("16777216"), null, "<html>3</html>"),
-        ),
-        truncated = false,
-        elapsedMs = 0,
-    )
-
     @Test
-    fun `row is found regardless of order and value classes`() {
-        val match = RowKeys.find(result, mapOf("sql_id" to "a1", "sql_exec_id" to 16777217L))
-        assertEquals(RowKeys.Match.Found(1), match)
+    fun `query is wrapped with quoted key columns and binds`() {
+        val filter = RowKeys.filter(
+            "select sql_id, sql_exec_id, report from v\$sql_monitor;  ",
+            listOf("SQL_ID" to "a1", "SQL_EXEC_ID" to BigDecimal("16777216")),
+        )
+        assertEquals(
+            "select * from (\nselect sql_id, sql_exec_id, report from v\$sql_monitor\n) where \"SQL_ID\" = ? and \"SQL_EXEC_ID\" = ?",
+            filter.sql,
+        )
+        assertEquals(listOf("a1", BigDecimal("16777216")), filter.binds)
     }
 
     @Test
-    fun `dates from grid match timestamps from jdbc`() {
-        val match = RowKeys.find(result, mapOf("sql_exec_start" to start, "sql_exec_id" to 16777216.0, "sql_id" to "a1"))
-        assertEquals(RowKeys.Match.Found(0), match)
+    fun `null key is matched with is null and not bound`() {
+        val filter = RowKeys.filter("select a, b from t", listOf("A" to null, "b" to 1))
+        assertEquals("select * from (\nselect a, b from t\n) where \"A\" is null and \"b\" = ?", filter.sql)
+        assertEquals(listOf(1), filter.binds)
     }
 
     @Test
-    fun `null key matches null`() {
-        assertEquals(RowKeys.Match.Found(2), RowKeys.find(result, mapOf("sql_exec_start" to null)))
+    fun `trailing line comment does not swallow the closing parenthesis`() {
+        val filter = RowKeys.filter("select a from t -- comment", listOf("A" to 1))
+        assertEquals("select * from (\nselect a from t -- comment\n) where \"A\" = ?", filter.sql)
     }
 
     @Test
-    fun `not unique key is ambiguous`() {
-        assertEquals(RowKeys.Match.Ambiguous, RowKeys.find(result, mapOf("sql_id" to "a1")))
+    fun `double quotes in column names are escaped`() {
+        assertEquals("select * from (\nq\n) where \"a\"\"b\" = ?", RowKeys.filter("q", listOf("a\"b" to 1)).sql)
     }
 
     @Test
-    fun `missing row is not found`() {
-        assertEquals(RowKeys.Match.NotFound, RowKeys.find(result, mapOf("sql_id" to "zz")))
-    }
-
-    @Test
-    fun `unknown key column is reported`() {
-        assertEquals(RowKeys.Match.MissingColumns(listOf("key")), RowKeys.find(result, mapOf("sql_id" to "a1", "key" to 1)))
+    fun `match depends on the number of rows`() {
+        val columns = listOf(QueryColumn("A", Types.NUMERIC))
+        assertEquals(RowKeys.Match.NotFound, RowKeys.match(QueryResult(columns, emptyList(), false)))
+        assertEquals(RowKeys.Match.Found(0), RowKeys.match(QueryResult(columns, listOf(listOf(1)), false)))
+        assertEquals(RowKeys.Match.Ambiguous, RowKeys.match(QueryResult(columns, listOf(listOf(1), listOf(1)), false)))
     }
 
     @Test

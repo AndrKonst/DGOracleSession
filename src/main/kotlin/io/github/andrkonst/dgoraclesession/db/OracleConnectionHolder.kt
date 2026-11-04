@@ -16,9 +16,6 @@ import java.sql.SQLException
 class OracleConnectionHolder(private val project: Project, val dataSource: LocalDataSource) : AutoCloseable {
     private var ref: GuardedRef<DatabaseConnection>? = null
 
-    var ownSid: String? = null
-        private set
-
     fun <T> use(block: (DatabaseConnection) -> T): T {
         val connection = connection()
         return try {
@@ -41,16 +38,12 @@ class OracleConnectionHolder(private val project: Project, val dataSource: Local
             .createBlocking()
             ?: throw SQLException("Cannot connect to ${dataSource.name}")
         ref = newRef
-        ownSid = runCatching {
-            QueryExecutor.query(newRef.get(), "select sys_context('USERENV', 'SID') from dual").rows.firstOrNull()?.firstOrNull()?.toString()
-        }.getOrNull()
         return newRef.get()
     }
 
     override fun close() {
         val current = ref ?: return
         ref = null
-        ownSid = null
         runCatching { current.close() }.onFailure { thisLogger().warn("Failed to close connection to ${dataSource.name}", it) }
     }
 

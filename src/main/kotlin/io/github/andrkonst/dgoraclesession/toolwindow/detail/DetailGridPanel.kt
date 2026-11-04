@@ -7,15 +7,14 @@ import com.intellij.database.datagrid.ModelIndex
 import com.intellij.database.remote.jdbc.LobInfo
 import com.intellij.database.run.ReservedCellValue
 import com.intellij.database.run.ui.DataAccessType
-import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.EDT
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.platform.ide.progress.withBackgroundProgress
 import io.github.andrkonst.dgoraclesession.DGOracleSessionBundle
+import io.github.andrkonst.dgoraclesession.DGOracleSessionNotifications
 import io.github.andrkonst.dgoraclesession.SessionsService
-import io.github.andrkonst.dgoraclesession.actions.TerminateSessionAction
 import io.github.andrkonst.dgoraclesession.grid.GridRows
 import io.github.andrkonst.dgoraclesession.grid.HtmlColumns
 import io.github.andrkonst.dgoraclesession.grid.QueryGrid
@@ -74,11 +73,18 @@ class DetailGridPanel(project: Project, detail: DetailDef) : DetailPanel(project
             notify(DGOracleSessionBundle.message("html.truncated.no.key", columnName), null, NotificationType.WARNING)
             return
         }
-        val keyValues = keyNames.associateWith { rowValues[it] }
+        // Key columns are quoted with the names exactly as the query returns them
+        val columnNames = model.columns.associateBy({ it.name.lowercase() }, { it.name })
+        val missing = keyNames.filter { it !in columnNames }
+        if (missing.isNotEmpty()) {
+            notify(DGOracleSessionBundle.message("html.reload.failed"), DGOracleSessionBundle.message("html.reload.missing.columns", missing.joinToString()), NotificationType.ERROR)
+            return
+        }
+        val keys = keyNames.map { columnNames.getValue(it) to rowValues[it] }
         service.scope.launch {
             try {
                 val full = withBackgroundProgress(project, DGOracleSessionBundle.message("html.reload.progress", columnName)) {
-                    fetchFull(service, sql, columnName, keyValues)
+                    fetchFull(service, sql, columnName, keys)
                 }
                 if (full != null) HtmlReportOpener.open(project, title, full, target)
             }
@@ -93,29 +99,26 @@ class DetailGridPanel(project: Project, detail: DetailDef) : DetailPanel(project
         }
     }
 
-    /** Re-executes the detail query and returns the full value of [columnName] in the row with [keyValues]. */
-    private suspend fun fetchFull(service: SessionsService, sql: String, columnName: String, keyValues: Map<String, Any?>): String? {
-        val result = service.query(sql)
-        val keys = keyValues.keys.joinToString()
-        val error = when (val match = RowKeys.find(result, keyValues)) {
+    /** Re-executes the detail query for the row with [keys] and returns the full value of [columnName]. */
+    private suspend fun fetchFull(service: SessionsService, sql: String, columnName: String, keys: List<Pair<String, Any?>>): String? {
+        val filter = RowKeys.filter(sql, keys)
+        val result = service.query(filter.sql, filter.binds, RowKeys.MAX_ROWS)
+        val keyText = keys.joinToString { it.first.lowercase() }
+        val error = when (val match = RowKeys.match(result)) {
             is RowKeys.Match.Found -> {
                 val index = result.columns.indexOfFirst { it.name.equals(columnName, ignoreCase = true) }
                 if (index >= 0) return result.rows[match.row][index]?.toString().orEmpty()
                 DGOracleSessionBundle.message("html.reload.missing.columns", columnName)
             }
-            is RowKeys.Match.MissingColumns -> DGOracleSessionBundle.message("html.reload.missing.columns", match.columns.joinToString())
-            RowKeys.Match.NotFound -> DGOracleSessionBundle.message("html.reload.not.found", keys)
-            RowKeys.Match.Ambiguous -> DGOracleSessionBundle.message("html.reload.ambiguous", keys)
+            RowKeys.Match.NotFound -> DGOracleSessionBundle.message("html.reload.not.found", keyText)
+            RowKeys.Match.Ambiguous -> DGOracleSessionBundle.message("html.reload.ambiguous", keyText)
         }
         withContext(Dispatchers.EDT) { notify(DGOracleSessionBundle.message("html.reload.failed"), error, NotificationType.ERROR) }
         return null
     }
 
-    private fun notify(title: String, content: String?, type: NotificationType) {
-        val group = NotificationGroupManager.getInstance().getNotificationGroup(TerminateSessionAction.NOTIFICATION_GROUP)
-        val notification = if (content == null) group.createNotification(title, type) else group.createNotification(title, content, type)
-        notification.notify(project)
-    }
+    private fun notify(title: String, content: String?, type: NotificationType) =
+        DGOracleSessionNotifications.notify(project, title, content, type)
 
     override fun showMessage(text: String) {
         disposeGrid()
