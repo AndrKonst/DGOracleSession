@@ -59,6 +59,7 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
             }
         }
         dataSourceCombo.addActionListener {
+            updateComboBackground()
             if (!updatingCombo) onDataSourceSelected(dataSourceCombo.selectedItem as LocalDataSource?)
         }
 
@@ -79,12 +80,21 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
             override fun <T : RawDataSource> dataSourceChanged(manager: DataSourceManager<T>?, dataSource: T?) = reloadDataSources()
         })
         project.messageBus.connect(this).subscribe(DatabaseColorManager.COLOR_CHANGE_TOPIC,
-            DatabaseColorManager.ColorChangeListener { dataSourceCombo.repaint() })
+            DatabaseColorManager.ColorChangeListener {
+                updateComboBackground()
+                dataSourceCombo.repaint()
+            })
         ApplicationManager.getApplication().messageBus.connect(this)
             .subscribe(QueryTabsSettings.TOPIC, QueryTabsSettings.Listener { rebuildTabs() })
 
         rebuildTabs()
         reloadDataSources(service.dataSource ?: service.restoreDataSource(), initial = true)
+    }
+
+    private fun updateComboBackground() {
+        val ds = dataSourceCombo.selectedItem as LocalDataSource?
+        dataSourceCombo.background = ds?.takeIf { DatabaseColorManager.useColorsInToolbars(project) }
+            ?.let { DatabaseColorManager.getEffectiveColorBunch(project, it) }?.fileColor
     }
 
     private fun rebuildTabs() {
@@ -140,6 +150,7 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
                     updatingCombo = false
                 }
             }
+            updateComboBackground()
             if (initial || selected?.uniqueId != service.dataSource?.uniqueId) onDataSourceSelected(selected)
         }
     }
