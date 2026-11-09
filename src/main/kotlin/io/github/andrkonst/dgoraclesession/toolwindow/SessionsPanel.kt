@@ -3,6 +3,7 @@ package io.github.andrkonst.dgoraclesession.toolwindow
 import com.intellij.database.dataSource.LocalDataSource
 import com.intellij.database.model.RawDataSource
 import com.intellij.database.psi.DataSourceManager
+import com.intellij.database.view.DatabaseColorManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.actionSystem.ActionGroup
 import com.intellij.openapi.actionSystem.ActionManager
@@ -29,6 +30,7 @@ import kotlinx.coroutines.launch
 import java.awt.BorderLayout
 import java.awt.FlowLayout
 import javax.swing.DefaultComboBoxModel
+import javax.swing.JList
 import javax.swing.JPanel
 
 class SessionsPanel(private val project: Project, parentDisposable: Disposable) : SimpleToolWindowPanel(true, true), Disposable {
@@ -46,9 +48,15 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
     init {
         Disposer.register(parentDisposable, this)
 
-        dataSourceCombo.renderer = SimpleListCellRenderer.create { label, ds, _ ->
-            label.text = ds?.name ?: DGOracleSessionBundle.message("datasource.none")
-            label.icon = ds?.dbms?.icon
+        dataSourceCombo.renderer = object : SimpleListCellRenderer<LocalDataSource>() {
+            override fun customize(list: JList<out LocalDataSource>, ds: LocalDataSource?, index: Int, selected: Boolean, hasFocus: Boolean) {
+                text = ds?.name ?: DGOracleSessionBundle.message("datasource.none")
+                icon = ds?.dbms?.icon
+                val colors = ds?.takeIf { DatabaseColorManager.useColorsInToolbars(project) }
+                    ?.let { DatabaseColorManager.getEffectiveColorBunch(project, it) } ?: return
+                isOpaque = true
+                background = if (selected && index >= 0) colors.selectionActiveColor else colors.fileColor
+            }
         }
         dataSourceCombo.addActionListener {
             if (!updatingCombo) onDataSourceSelected(dataSourceCombo.selectedItem as LocalDataSource?)
@@ -70,6 +78,8 @@ class SessionsPanel(private val project: Project, parentDisposable: Disposable) 
             override fun <T : RawDataSource> dataSourceRemoved(manager: DataSourceManager<T>, dataSource: T) = reloadDataSources()
             override fun <T : RawDataSource> dataSourceChanged(manager: DataSourceManager<T>?, dataSource: T?) = reloadDataSources()
         })
+        project.messageBus.connect(this).subscribe(DatabaseColorManager.COLOR_CHANGE_TOPIC,
+            DatabaseColorManager.ColorChangeListener { dataSourceCombo.repaint() })
         ApplicationManager.getApplication().messageBus.connect(this)
             .subscribe(QueryTabsSettings.TOPIC, QueryTabsSettings.Listener { rebuildTabs() })
 
